@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+*.db
+*.sqlite
+*.jsonl
+runtime/*/*
+!runtime/**/.gitkeep
+PLAN.md
+*.pdf
+yeu_cau_cham_diem.png
+de_tai.txt
