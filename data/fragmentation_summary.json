@@ -1,0 +1,64 @@
+{
+  "verified_at": "2026-05-24T01:37:24.354048+00:00",
+  "textbook_alignment": {
+    "fragmentation_type": "Primary horizontal fragmentation",
+    "relation": "Warehouse_Inventory",
+    "simple_predicates": {
+      "p1": "region = 'North'",
+      "p2": "region = 'Central'",
+      "p3": "region = 'SouthEast'",
+      "p4": "region = 'Mekong'"
+    },
+    "fragment_formulas": {
+      "Inventory_North": "select region='North' from Warehouse_Inventory",
+      "Inventory_Central": "select region='Central' from Warehouse_Inventory",
+      "Inventory_SouthEast": "select region='SouthEast' from Warehouse_Inventory",
+      "Inventory_Mekong": "select region='Mekong' from Warehouse_Inventory"
+    },
+    "allocation": {
+      "Inventory_North": "site_a",
+      "Inventory_Central": "site_b",
+      "Inventory_SouthEast": "site_c",
+      "Inventory_Mekong": "site_d"
+    }
+  },
+  "expected": {
+    "total_rows": 5000,
+    "partition_rows": 1250
+  },
+  "actual": {
+    "total_rows": 5000,
+    "partition_rows": {
+      "site_a": 1250,
+      "site_b": 1250,
+      "site_c": 1250,
+      "site_d": 1250
+    }
+  },
+  "checks": {
+    "dataset_row_count": "PASS",
+    "partition_row_counts": "PASS",
+    "completeness": "PASS",
+    "reconstruction": "PASS",
+    "disjointness": "PASS",
+    "predicate_correctness": "PASS",
+    "warehouse_allocation": "PASS"
+  },
+  "details": {
+    "duplicate_partition_ids": [],
+    "missing_from_partitions": [],
+    "extra_in_partitions": [],
+    "predicate_checks": {
+      "site_a": "PASS",
+      "site_b": "PASS",
+      "site_c": "PASS",
+      "site_d": "PASS"
+    },
+    "warehouse_allocation_checks": {
+      "site_a": "PASS",
+      "site_b": "PASS",
+      "site_c": "PASS",
+      "site_d": "PASS"
+    }
+  }
+}
