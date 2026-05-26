@@ -11,11 +11,12 @@ class MessageCounter:
         self._counts[message_type] += amount
 
     def snapshot(self) -> dict[str, int]:
-        return dict(self._counts)
+        snapshot = dict(self._counts)
+        snapshot["TOTAL"] = sum(self._counts.values())
+        return snapshot
 
     def reset(self) -> None:
         self._counts.clear()
 
 
 message_counter = MessageCounter()
-

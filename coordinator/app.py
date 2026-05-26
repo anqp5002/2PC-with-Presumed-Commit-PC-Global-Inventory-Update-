@@ -27,28 +27,19 @@ def health() -> dict[str, object]:
 
 
 @app.post("/transactions/global-inventory-update")
-def global_inventory_update(request: GlobalInventoryUpdateRequest) -> StubResponse:
-    transaction_id, state = protocol.create_stub_transaction(request)
-    return StubResponse(
-        service=SERVICE_NAME,
-        message="global inventory update endpoint is ready",
-        data={
-            "transaction_id": transaction_id,
-            "state": state,
-            "mode": request.mode,
-            "update_count": len(request.updates),
-        },
-    )
+def global_inventory_update(request: GlobalInventoryUpdateRequest):
+    return protocol.run_transaction(request)
 
 
 @app.get("/transactions/{transaction_id}")
 def get_transaction(transaction_id: str) -> StubResponse:
+    state = protocol.get_state(transaction_id)
     return StubResponse(
         service=SERVICE_NAME,
         message="transaction lookup endpoint is ready",
         data={
             "transaction_id": transaction_id,
-            "state": protocol.get_state(transaction_id),
+            "transaction": state.model_dump(mode="json") if state else None,
         },
     )
 
@@ -84,4 +75,3 @@ def forget_transaction(transaction_id: str) -> StubResponse:
         message="forget transaction endpoint is ready",
         data={"transaction_id": transaction_id, "removed": removed},
     )
-
