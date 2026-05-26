@@ -69,9 +69,50 @@ class DecisionResponse(BaseModel):
     decision: Decision
 
 
+class TransactionDecisionRequest(BaseModel):
+    transaction_id: str
+    mode: TransactionMode = TransactionMode.PC_WITH_ACD
+
+
+class VoteResponse(BaseModel):
+    transaction_id: str
+    site_id: str
+    message_type: MessageType
+    state: ParticipantState
+    reason: str | None = None
+
+
+class AckResponse(BaseModel):
+    transaction_id: str
+    site_id: str
+    message_type: MessageType
+    state: ParticipantState
+    reason: str | None = None
+
+
+class TransactionStateResponse(BaseModel):
+    transaction_id: str
+    mode: TransactionMode
+    state: CoordinatorState
+    participants: list[str]
+    votes: dict[str, str] = Field(default_factory=dict)
+    acks: dict[str, str] = Field(default_factory=dict)
+    decision: Decision | None = None
+    reason: str | None = None
+
+
+class LogRecord(BaseModel):
+    transaction_id: str
+    timestamp: str
+    site_id: str
+    state: str
+    event: str
+    payload_hash: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
 class StubResponse(BaseModel):
     status: str = "stub"
     service: str
     message: str
     data: dict[str, Any] = Field(default_factory=dict)
-

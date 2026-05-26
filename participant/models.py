@@ -31,6 +31,12 @@ class MessageType(StrEnum):
     RECOVERY_DECISION = "RECOVERY_DECISION"
 
 
+class Decision(StrEnum):
+    COMMIT = "COMMIT"
+    ABORT = "ABORT"
+    NOT_FOUND = "NOT_FOUND"
+
+
 class InventoryUpdateItem(BaseModel):
     inventory_id: str = Field(..., examples=["INV-000001"])
     warehouse_id: str = Field(..., examples=["WH001"])
@@ -49,6 +55,32 @@ class TransactionDecisionRequest(BaseModel):
     mode: TransactionMode = TransactionMode.PC_WITH_ACD
 
 
+class VoteResponse(BaseModel):
+    transaction_id: str
+    site_id: str
+    message_type: MessageType
+    state: ParticipantState
+    reason: str | None = None
+
+
+class AckResponse(BaseModel):
+    transaction_id: str
+    site_id: str
+    message_type: MessageType
+    state: ParticipantState
+    reason: str | None = None
+
+
+class LogRecord(BaseModel):
+    transaction_id: str
+    timestamp: str
+    site_id: str
+    state: str
+    event: str
+    payload_hash: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
 class DebugFlagResponse(BaseModel):
     status: str = "stub"
     service: str
@@ -61,4 +93,3 @@ class StubResponse(BaseModel):
     service: str
     message: str
     data: dict[str, Any] = Field(default_factory=dict)
-
