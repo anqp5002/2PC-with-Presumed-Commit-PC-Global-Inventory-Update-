@@ -73,6 +73,123 @@ Invoke-RestMethod http://127.0.0.1:8004/health
 .\scripts\stop_all.ps1
 ```
 
+## Chuẩn bị dữ liệu và phân mảnh
+
+Tạo dataset tồn kho toàn cục đúng 5,000 dòng:
+
+```powershell
+python scripts/generate_dataset.py
+```
+
+Phân mảnh ngang chính quy theo `region` thành 4 site:
+
+```powershell
+python scripts/partition_dataset.py
+```
+
+Kiểm chứng các tính chất theo Chương 2:
+
+```powershell
+python scripts/verify_fragmentation.py
+```
+
+Chạy test phân mảnh:
+
+```powershell
+python -m pytest tests/test_fragmentation.py
+```
+
+Dữ liệu được tạo theo mô hình:
+
+```text
+20 warehouses x 250 SKUs = 5,000 inventory rows
+```
+
+Phân bổ site:
+
+```text
+site_a -> North     -> WH001-WH005
+site_b -> Central   -> WH006-WH010
+site_c -> SouthEast -> WH011-WH015
+site_d -> Mekong    -> WH016-WH020
+```
+
+Phân mảnh dùng primary horizontal fragmentation:
+
+```text
+Inventory_North     = select region='North' from Warehouse_Inventory
+Inventory_Central   = select region='Central' from Warehouse_Inventory
+Inventory_SouthEast = select region='SouthEast' from Warehouse_Inventory
+Inventory_Mekong    = select region='Mekong' from Warehouse_Inventory
+```
+
+Script `verify_fragmentation.py` kiểm tra:
+
+```text
+Completeness
+Reconstruction
+Disjointness
+Predicate correctness
+Warehouse allocation
+```
+
+## Giao thức 2PC và nhật ký hệ thống
+
+Phần cốt lõi hiện đã có state machine 2PC ở mức protocol/log:
+
+```text
+PREPARE
+VOTE_COMMIT
+VOTE_ABORT
+GLOBAL_COMMIT
+GLOBAL_ABORT
+ACK_COMMIT
+ACK_ABORT
+RECOVERY_QUERY
+RECOVERY_DECISION
+```
+
+Coordinator điều phối giao dịch qua:
+
+```text
+POST /transactions/global-inventory-update
+```
+
+Participant xử lý:
+
+```text
+POST /prepare
+POST /global-commit
+POST /global-abort
+POST /recover-pending
+```
+
+Nhật ký bền vững được ghi dạng JSONL:
+
+```text
+runtime/coordinator/coordinator_log.jsonl
+runtime/site_a/site_a_log.jsonl
+runtime/site_b/site_b_log.jsonl
+runtime/site_c/site_c_log.jsonl
+runtime/site_d/site_d_log.jsonl
+```
+
+Theo Presumed Commit, Coordinator không ghi durable log cho `GLOBAL_COMMIT`. Nếu Participant recovery từ trạng thái `READY` và Coordinator trả `NOT_FOUND`, Participant suy luận kết quả là `COMMIT`.
+
+Chạy test protocol và log:
+
+```powershell
+python -m pytest tests/test_log_store.py
+python -m pytest tests/test_protocol_state.py
+python -m pytest tests/test_presumed_commit.py
+```
+
+Chạy toàn bộ test hiện có:
+
+```powershell
+python -m pytest tests
+```
+
 ## API Coordinator
 
 ```text
@@ -105,11 +222,13 @@ Project hiện đã có:
 
 ```text
 coordinator/
+data/
 participant/
 scripts/
+tests/
 runtime/
 requirements.txt
 README.md
 ```
 
-Các API hiện tại là stub ổn định để chuẩn bị cho các phần tiếp theo. Phần sau sẽ bổ sung tạo dataset 5,000 dòng, phân mảnh dữ liệu theo vùng, SQLite cục bộ cho từng site, log JSONL, recovery sau crash và logic Presumed Commit đầy đủ.
+Các API hiện tại là stub ổn định để chuẩn bị cho các phần tiếp theo. Dataset 5,000 dòng và 4 file phân mảnh theo vùng đã được chuẩn bị. Các phần sau sẽ bổ sung SQLite cục bộ cho từng site, log JSONL, recovery sau crash và logic Presumed Commit đầy đủ.
