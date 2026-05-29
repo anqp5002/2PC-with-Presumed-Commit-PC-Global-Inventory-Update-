@@ -70,11 +70,13 @@ class ParticipantLogStore:
             for record in self.read_by_transaction(transaction_id)
         )
 
-    def ready_transactions_without_final_state(self) -> list[str]:
+    def events_by_transaction(self) -> dict[str, set[str]]:
         transactions: dict[str, set[str]] = {}
         for record in self.read_all():
             transactions.setdefault(record.transaction_id, set()).add(record.event)
+        return transactions
 
+    def ready_transactions_without_final_state(self) -> list[str]:
         final_events = {
             "LOCAL_ABORT",
             "APPLIED_COMMIT",
@@ -82,7 +84,24 @@ class ParticipantLogStore:
         }
         return sorted(
             transaction_id
-            for transaction_id, events in transactions.items()
+            for transaction_id, events in self.events_by_transaction().items()
             if "READY" in events and not events.intersection(final_events)
         )
+
+    def commit_received_without_applied(self) -> list[str]:
+        return sorted(
+            transaction_id
+            for transaction_id, events in self.events_by_transaction().items()
+            if "GLOBAL_COMMIT_RECEIVED" in events
+            and "APPLIED_COMMIT" not in events
+            and "ROLLED_BACK" not in events
+        )
+
+    def updates_for_transaction(self, transaction_id: str) -> list[dict]:
+        for record in reversed(self.read_by_transaction(transaction_id)):
+            if record.event == "READY":
+                updates = record.payload.get("updates", [])
+                if isinstance(updates, list):
+                    return [dict(update) for update in updates]
+        return []
 

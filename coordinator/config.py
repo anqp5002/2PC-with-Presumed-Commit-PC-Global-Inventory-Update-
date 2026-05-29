@@ -13,6 +13,7 @@ class ParticipantConfig:
 COORDINATOR_HOST = "127.0.0.1"
 COORDINATOR_PORT = 8000
 SERVICE_NAME = "coordinator"
+PARTICIPANT_TIMEOUT_SECONDS = 2.0
 
 PARTICIPANTS: dict[str, ParticipantConfig] = {
     "site_a": ParticipantConfig("site_a", "North", "http://127.0.0.1:8001"),
@@ -20,4 +21,3 @@ PARTICIPANTS: dict[str, ParticipantConfig] = {
     "site_c": ParticipantConfig("site_c", "SouthEast", "http://127.0.0.1:8003"),
     "site_d": ParticipantConfig("site_d", "Mekong", "http://127.0.0.1:8004"),
 }
-

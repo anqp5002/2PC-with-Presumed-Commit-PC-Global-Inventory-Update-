@@ -5,7 +5,12 @@ from uuid import uuid4
 
 import httpx
 
-from coordinator.config import PARTICIPANTS, SERVICE_NAME, ParticipantConfig
+from coordinator.config import (
+    PARTICIPANTS,
+    PARTICIPANT_TIMEOUT_SECONDS,
+    SERVICE_NAME,
+    ParticipantConfig,
+)
 from coordinator.log_store import CoordinatorLogStore, log_store
 from coordinator.message_counter import message_counter
 from coordinator.models import (
@@ -60,7 +65,7 @@ class CoordinatorProtocol:
         self.participant_configs = participant_configs
 
     def _post_json(self, url: str, payload: dict) -> dict:
-        with httpx.Client(timeout=5.0) as client:
+        with httpx.Client(timeout=PARTICIPANT_TIMEOUT_SECONDS) as client:
             response = client.post(url, json=payload)
             response.raise_for_status()
             return response.json()
@@ -230,13 +235,18 @@ class CoordinatorProtocol:
         transaction.state = CoordinatorState.COMMIT
         transaction.decision = Decision.COMMIT
 
+        commit_delivery_errors: dict[str, str] = {}
         for site_id in participants:
-            ack = self._send_global_commit(transaction, site_id)
-            if request.mode != TransactionMode.PC_NO_ACD:
-                transaction.acks[site_id] = ack.message_type.value
+            try:
+                ack = self._send_global_commit(transaction, site_id)
+                if request.mode != TransactionMode.PC_NO_ACD:
+                    transaction.acks[site_id] = ack.message_type.value
+            except Exception as exc:
+                commit_delivery_errors[site_id] = str(exc)
+                transaction.acks[site_id] = f"ACK_COMMIT_FAILED: {exc}"
 
         response = transaction.to_response()
-        if request.mode == TransactionMode.PC_WITH_ACD:
+        if request.mode == TransactionMode.PC_WITH_ACD and not commit_delivery_errors:
             transaction.state = CoordinatorState.END
             response = transaction.to_response()
             self.transactions.pop(transaction_id, None)
