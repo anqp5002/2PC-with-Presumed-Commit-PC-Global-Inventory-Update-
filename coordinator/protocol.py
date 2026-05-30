@@ -95,6 +95,7 @@ class CoordinatorProtocol:
         site_id: str,
         updates: list[InventoryUpdateItem],
     ) -> VoteResponse:
+        """Send the 2PC prepare request and count both network directions."""
         config = self.participant_configs[site_id]
         request = PrepareRequest(
             transaction_id=transaction_id,
@@ -114,6 +115,15 @@ class CoordinatorProtocol:
         transaction: RuntimeTransaction,
         site_id: str,
     ) -> AckResponse:
+        """Send GLOBAL_COMMIT and optionally count ACD.
+
+        TEXTBOOK ALIGNMENT (Ozsu & Valduriez, Ch. 5.4.2):
+        Presumed Commit may use acknowledgment of commit (ACD) so the
+        coordinator knows each participant has received the commit decision.
+        `PC_NO_ACD` keeps the commit decision rule but omits ACK_COMMIT from
+        the measured network path.
+        """
+
         config = self.participant_configs[site_id]
         self._count(MessageType.GLOBAL_COMMIT)
         response = self._post_json(
@@ -133,6 +143,15 @@ class CoordinatorProtocol:
         transaction: RuntimeTransaction,
         site_id: str,
     ) -> AckResponse:
+        """Send GLOBAL_ABORT and count abort ACK according to the comparison mode.
+
+        TEXTBOOK ALIGNMENT (Ozsu & Valduriez, Ch. 5):
+        After one abort vote or timeout, the coordinator must tell every
+        participant in the transaction to abort. `PA_COMPARISON` is only a
+        message-count baseline here, so ACK_ABORT is excluded for that chart
+        path while Presumed Commit keeps it.
+        """
+
         config = self.participant_configs[site_id]
         self._count(MessageType.GLOBAL_ABORT)
         response = self._post_json(
@@ -143,10 +162,19 @@ class CoordinatorProtocol:
             },
         )
         ack = AckResponse.model_validate(response)
-        self._count(MessageType(ack.message_type))
+        if transaction.mode != TransactionMode.PA_COMPARISON:
+            self._count(MessageType(ack.message_type))
         return ack
 
     def _record_abort(self, transaction: RuntimeTransaction, reason: str) -> None:
+        """Durably record a global abort decision.
+
+        TEXTBOOK ALIGNMENT (Ozsu & Valduriez, Ch. 5.4.2):
+        In Presumed Commit, abort is the exceptional outcome and must be
+        durable. A later recovery lookup can then distinguish a real abort from
+        a missing commit record.
+        """
+
         self.durable_log.append(
             transaction_id=transaction.transaction_id,
             site_id=SERVICE_NAME,
@@ -257,6 +285,13 @@ class CoordinatorProtocol:
         transaction: RuntimeTransaction,
         reason: str,
     ) -> TransactionStateResponse:
+        """Move WAIT to ABORT after an abort vote, timeout, or missing vote.
+
+        TEXTBOOK ALIGNMENT (Ozsu & Valduriez, Ch. 5):
+        The global abort rule is conservative: one negative vote, timeout, or
+        unreachable participant is enough to abort the distributed transaction.
+        """
+
         transaction.state = CoordinatorState.ABORT
         transaction.decision = Decision.ABORT
         transaction.reason = reason
