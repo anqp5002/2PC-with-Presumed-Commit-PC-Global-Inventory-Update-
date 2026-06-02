@@ -116,6 +116,14 @@ class InventoryStore:
         self,
         updates: list[InventoryUpdateItem] | list[dict[str, Any]],
     ) -> tuple[bool, str | None]:
+        """Validate local site predicates and stock before voting READY.
+
+        TEXTBOOK ALIGNMENT (Ozsu & Valduriez, Ch. 5):
+        The participant can vote commit only after local checks show that it
+        can commit if the coordinator later chooses GLOBAL_COMMIT. It still
+        does not apply the inventory mutation in the PREPARE phase.
+        """
+
         if not self._database_ready():
             return False, f"SQLite database is not initialized for {self.site_id}"
 
@@ -128,6 +136,14 @@ class InventoryStore:
         transaction_id: str,
         updates: list[InventoryUpdateItem] | list[dict[str, Any]],
     ) -> dict[str, Any]:
+        """Apply a committed transaction exactly once.
+
+        TEXTBOOK ALIGNMENT (Ozsu & Valduriez, Ch. 5):
+        Recovery may replay a commit decision after a crash, so local commit
+        processing must be idempotent. The `applied_transactions` table is the
+        durable marker that prevents double-decrementing inventory.
+        """
+
         if not self._database_ready():
             raise FileNotFoundError(
                 f"SQLite database is not initialized for {self.site_id}: {self.db_file}"

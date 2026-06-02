@@ -71,9 +71,6 @@ def init_site_database(
     if not partition_file.exists():
         raise FileNotFoundError(f"Partition file not found: {partition_file}")
 
-    if reset and db_file.exists():
-        db_file.unlink()
-
     db_file.parent.mkdir(parents=True, exist_ok=True)
     with partition_file.open("r", newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
@@ -81,6 +78,9 @@ def init_site_database(
     with sqlite3.connect(db_file) as conn:
         conn.execute(INVENTORY_SCHEMA)
         conn.execute(APPLIED_TRANSACTIONS_SCHEMA)
+        # Keep the SQLite file in place so metrics can reset data while
+        # participant services are running on Windows, where unlinking an open
+        # database file raises WinError 32.
         conn.execute("DELETE FROM inventory")
         conn.execute("DELETE FROM applied_transactions")
         conn.executemany(

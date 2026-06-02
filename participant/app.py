@@ -213,7 +213,14 @@ def global_commit(request: TransactionDecisionRequest) -> AckResponse:
 
 @app.post("/global-abort")
 def global_abort(request: TransactionDecisionRequest) -> AckResponse:
-    """Apply the global abort decision."""
+    """Apply the global abort decision.
+
+    TEXTBOOK ALIGNMENT (Ozsu & Valduriez, Ch. 5):
+    A participant in READY must obey the coordinator's global abort decision.
+    Because this implementation does not mutate inventory before
+    GLOBAL_COMMIT, rollback records the abort outcome but does not compensate
+    any stock change.
+    """
 
     log_store.append(
         transaction_id=request.transaction_id,

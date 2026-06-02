@@ -77,6 +77,10 @@ class RecoveryManager:
         errors: list[dict[str, str]] = []
 
         for transaction_id in self.log_store.commit_received_without_applied():
+            # TEXTBOOK ALIGNMENT (Ozsu & Valduriez, Ch. 5):
+            # GLOBAL_COMMIT_RECEIVED is already the global decision. If the
+            # participant crashed before APPLIED_COMMIT, recovery can apply the
+            # logged commit payload without asking the coordinator again.
             try:
                 apply_result = self._apply_commit(
                     transaction_id,
